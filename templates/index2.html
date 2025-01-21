@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat with Copilot</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles1.css') }}">
+   </head>
+<body>
+    <div class="chat-container">
+        <div class="chat-box">
+            <div class="chat-header">
+                <img src="{{ url_for('static', filename='images/finastra-logo.png') }}" alt="Finastra Logo" class="logo">
+            </div>
+            <marquee class="marquee" scrolldelay="500" behavior="alternate" direction="left">
+                <span class="word-purple">Essence</span>, 
+                <span class="word-blue">Customer Support</span>, 
+                <span class="word-pink">SFDC</span>, 
+                <span class="word-purple">KCS</span>, 
+                <span class="word-blue">Jira</span>, 
+                <span class="word-pink">Errors</span>, 
+                <span class="word-purple">Exception</span>, 
+                <span class="word-blue">Workaround</span>, 
+                <span class="word-pink">Solution</span>, 
+                <span class="word-purple">Version</span>,
+                <span class="word-blue">Critical</span>, 
+                <span class="word-pink">Live</span>, 
+                <span class="word-purple">Escalations</span>,
+                <span class="word-blue">Go-Live</span>,
+                <span class="word-pink">Pipeline</span>,
+                <span class="word-purple">Customization</span>,
+                <span class="word-blue">Cloud</span>,
+                <span class="word-pink">On-Premise</span>,
+                <span class="word-purple">Service Packs</span>,
+                <span class="word-blue">Patches</span>,
+                <span class="word-pink">Hot-Fixes</span>
+            </marquee>
+            <div id="messages" class="messages"></div>
+            <form id="chat-form" class="input-form">
+                <input type="text" id="query" name="query" placeholder="Type your message..." required>
+                <button type="submit">Send</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+    document.getElementById('chat-form').addEventListener('submit', function(event) {
+        event.preventDefault();
+        const query = document.getElementById('query').value;
+        const messagesDiv = document.getElementById('messages');
+
+        // Display user message
+        const userMessage = document.createElement('div');
+        userMessage.className = 'message user';
+        userMessage.textContent = query;
+        messagesDiv.appendChild(userMessage);
+
+        // Clear input field
+        document.getElementById('query').value = '';
+
+        fetch('/search', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ query: query })
+        })
+        .then(response => response.json())
+        .then(data => {
+            console.log('Received data:', data); 
+            console.log('Received data length :', data.length); 
+            let response_cases;
+            let response_kcs;
+
+            if(data.length === 1){
+                response_cases = data;
+            }else{
+                response_cases = data.response_cases;
+                response_kcs = data.response_kcs;
+            }
+            console.log("response cases --> ",response_cases)
+            response_cases.forEach(summary => {
+                console.log("Inside cases summary", summary)
+                // Replace newline characters with <br> tags in the Solution text
+                let formattedSolution = summary['Solution'].replace(/\n/g, '<br>');
+
+                // Replace newline characters with <br> tags in the Steps to Reproduce text
+                let formattedSteps2Reproduce = summary['Steps to Reproduce'].replace(/\n/g, '<br>');
+
+                // Create the similarity score circle
+                let similarityScore = `<div class="circle">${summary['Similarity Score'].toFixed(2)}</div>`;
+
+                // Format the summary object into a readable string
+                let formattedSummary = `
+                    <div class="message-content">
+                        <strong>Case Number:</strong> ${summary['Case Number']}<br><br>
+                        <strong>Issue:</strong> ${summary['Issue']}<br><br>
+                        <strong>Version:</strong> ${summary['Version']}<br><br>
+                        <strong>Steps to Reproduce:</strong> ${formattedSteps2Reproduce}<br><br>
+                        <strong>Solution:</strong> ${formattedSolution}<br><br>
+                        <strong>View Case Details:</strong> <a href="${summary['ViewerURL']}" target="_blank" style="color: blue; font-weight: bold; text-decoration: underline;">${summary['Case Number']}</a><br><br>
+                    </div>
+                    ${similarityScore}
+                `;
+
+                const assistantMessage = document.createElement('div');
+                assistantMessage.className = 'message assistant';
+                assistantMessage.innerHTML = formattedSummary;
+                messagesDiv.appendChild(assistantMessage);
+            });
+            
+            if (response_kcs){
+            console.log("inside if condition of kcs summary")
+            response_kcs.forEach(kcs_summary => {
+
+                // Create the similarity score circle
+                let kcs_similarityScore = `<div class="circle">${kcs_summary['Similarity Score'].toFixed(2)}</div>`;
+
+                // Format the summary object into a readable string
+                let kcs_formattedSummary = `
+                    <div class="message-content">
+                        <strong>Article Number:</strong> ${kcs_summary['Article Number']}<br><br>
+                        <strong>Title:</strong> ${kcs_summary['Title']}<br><br>
+                        <strong>Workaround/Fix:</strong> ${kcs_summary['Workaround/Fix']}<br><br>
+                     </div>
+                    ${kcs_similarityScore}
+                `;
+
+                const assistantMessage = document.createElement('div');
+                assistantMessage.className = 'message assistant';
+                assistantMessage.innerHTML = kcs_formattedSummary;
+                messagesDiv.appendChild(assistantMessage);
+            });
+            }
+
+            messagesDiv.scrollTop = messagesDiv.scrollHeight; // Scroll to the bottom
+        })
+        .catch(error => console.error('Error:', error));
+    });
+    </script>
+</body>
+</html>
